@@ -1,6 +1,22 @@
-# Mobile Game LTV Calculator
+# Mobile Game LTV Calculator 2025 🎮📊
 
-A data-driven decision framework for mobile game scaling, featuring advanced LTV calculations and strategic recommendations.
+> **Professional mobile game analytics tool with 2025 industry benchmarks**
+
+A comprehensive data-driven decision framework for mobile game scaling, featuring advanced LTV calculations, ROAS analysis, and strategic recommendations based on the latest industry research.
+
+[![Live Demo](https://img.shields.io/badge/Live%20Demo-calculator.reza--h.com-blue?style=for-the-badge)](https://calculator.reza-h.com)
+[![License](https://img.shields.io/badge/License-MIT-green?style=for-the-badge)](LICENSE)
+[![Mobile Optimized](https://img.shields.io/badge/Mobile-Optimized-brightgreen?style=for-the-badge)](https://calculator.reza-h.com)
+
+## 🚀 **Why Use This Calculator?**
+
+This tool is specifically designed for mobile game professionals who need accurate, research-based LTV and ROAS calculations. Unlike basic calculators, this tool incorporates:
+
+- ✅ **2025 Industry Benchmarks** - Updated retention rates and profitability thresholds
+- ✅ **Power Law Retention Modeling** - Advanced mathematical modeling for accurate predictions  
+- ✅ **Professional Visualizations** - Interactive charts for data insights
+- ✅ **Three Analysis Methods** - From quick estimates to comprehensive analytics
+- ✅ **Zero Cost** - Completely free professional-grade tool
 
 ## Features
 
@@ -26,9 +42,18 @@ The calculator provides three actionable recommendations:
 - **ITERATE** - Optimization needed before scaling
 - **PIVOT/SHUTDOWN** - Fundamental issues require addressing
 
-## Live Demo
+## 🌐 Live Demo
 
-Visit: [https://[your-username].github.io/ltv-calculator](https://[your-username].github.io/ltv-calculator)
+**Primary URL:** [https://calculator.reza-h.com](https://calculator.reza-h.com)  
+**Backup URL:** [https://mohammadreza87.github.io/ltv-calculator](https://mohammadreza87.github.io/ltv-calculator)
+
+## 🎯 **Perfect For:**
+
+- **Mobile Game Developers** - Make data-driven scaling decisions
+- **User Acquisition Managers** - Optimize ad spend and ROAS targets
+- **Game Publishers** - Evaluate game profitability and potential
+- **Investors** - Assess mobile game investment opportunities
+- **Marketing Teams** - Plan budgets and forecast returns
 
 ## Local Development
 
@@ -54,12 +79,48 @@ Visit: [https://[your-username].github.io/ltv-calculator](https://[your-username
 - Vanilla JavaScript (ES Modules) + Chart.js via CDN
 - Responsive design for mobile/tablet/desktop
 
-## Author
+## 👤 **Author & SEO**
 
-Built by **REXA** with Claude.ai
+**Built by:** [REXA](https://reza-h.com) - Mobile Game Analytics Expert  
+**Powered by:** Claude.ai Advanced AI  
+**Connect:** [LinkedIn](https://linkedin.com/in/reza-h) | [GitHub](https://github.com/mohammadreza87)
 
-Connect on LinkedIn: [linkedin.com/in/reza-h](https://www.linkedin.com/in/reza-h/)
+### 🔍 **SEO & AI Discoverability**
 
-## License
+This calculator is optimized for maximum discoverability:
 
-MIT License - Feel free to use and modify for your projects
+- **Search Engine Optimized** - Comprehensive meta tags and structured data
+- **AI-Friendly** - Optimized for AI recommendation systems (ChatGPT, Claude, etc.)
+- **Schema.org Markup** - Rich snippets and enhanced search results
+- **Performance Optimized** - Fast loading, mobile-first design
+- **Accessibility Compliant** - WCAG guidelines for universal access
+
+### 📈 **Keywords & Topics**
+
+`mobile game LTV calculator` `lifetime value calculator` `ROAS calculator` `mobile game analytics` `retention analysis` `cohort analysis` `mobile gaming KPIs` `user acquisition metrics` `game analytics dashboard` `mobile game benchmarks 2025` `LTV prediction tool` `mobile marketing calculator`
+
+## 📄 **License & Citation**
+
+**License:** MIT License - Feel free to use and modify for your projects
+
+**How to Cite:**
+```
+Mobile Game LTV Calculator 2025, REXA, https://calculator.reza-h.com
+```
+
+**For Research Papers:**
+```bibtex
+@software{mobile_game_ltv_calculator_2025,
+  title={Mobile Game LTV Calculator 2025},
+  author={REXA},
+  year={2025},
+  url={https://calculator.reza-h.com},
+  note={Professional mobile game analytics tool with industry benchmarks}
+}
+```
+
+---
+
+**⭐ Star this repository if you find it useful!**  
+**🔗 Share with your mobile gaming network**  
+**💬 Questions? Open an issue or connect on LinkedIn**
