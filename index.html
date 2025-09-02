@@ -46,6 +46,33 @@
     <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
     <link rel="dns-prefetch" href="https://cdn.jsdelivr.net">
     
+    <!-- Google tag (gtag.js) -->
+    <script async src="https://www.googletagmanager.com/gtag/js?id=G-XH792N0PEQ"></script>
+    <script>
+        window.dataLayer = window.dataLayer || [];
+        function gtag(){dataLayer.push(arguments);}
+        gtag('js', new Date());
+        gtag('config', 'G-XH792N0PEQ', {
+            page_title: 'Mobile Game LTV Calculator 2025',
+            page_location: 'https://calculator.reza-h.com'
+        });
+        
+        // Custom event tracking for calculator usage
+        function trackCalculation(method) {
+            gtag('event', 'calculate', {
+                'event_category': 'LTV Calculator',
+                'event_label': method
+            });
+        }
+        
+        function trackMethodSwitch(method) {
+            gtag('event', 'method_switch', {
+                'event_category': 'User Interface',
+                'event_label': method
+            });
+        }
+    </script>
+    
     <!-- Favicon (use relative paths for local dev) -->
     <link rel="icon" type="image/x-icon" href="favicon.ico">
     <link rel="apple-touch-icon" sizes="180x180" href="apple-touch-icon.png">
@@ -527,6 +554,11 @@
             buttonEl?.classList.add('active');
             document.querySelectorAll('.method-inputs').forEach(input => input.style.display = 'none');
             document.getElementById(`${method}-inputs`).style.display = 'block';
+            
+            // Track method selection
+            if (typeof trackMethodSwitch === 'function') {
+                trackMethodSwitch(method);
+            }
         }
 
         function switchTab(tab, buttonEl) {
@@ -560,6 +592,11 @@
 
         function calculateAndRender() {
             let results, decision, insights;
+            
+            // Track calculation usage
+            if (typeof trackCalculation === 'function') {
+                trackCalculation(currentMethod);
+            }
 
             if (currentMethod === 'basic') {
                 const d1 = parseFloat(document.getElementById('d1-retention').value);
