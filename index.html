@@ -229,6 +229,523 @@
         <p class="tagline">📊 Data-driven decisions for mobile game scaling</p>
     </div>
 
-    <script type="module" src="src/main.js"></script>
+    <script>
+        // Bundled JavaScript for GitHub Pages compatibility
+        let currentMethod = 'basic';
+        let cohortCounter = 1;
+
+        // Core calculation utilities
+        function calculateLTV(retention, arpdau, days = 180) {
+            const d1 = retention.d1 / 100;
+            const d7 = retention.d7 / 100;
+            let b = Math.log(d7 / d1) / Math.log(7);
+            b = Math.max(-2, Math.min(b, -0.1));
+            const a = d1;
+
+            let cumulative = 0;
+            const stepSize = 0.1;
+            for (let day = stepSize; day <= days; day += stepSize) {
+                cumulative += a * Math.pow(day, b) * stepSize;
+            }
+            const decayFactor = 0.95 + 0.05 * Math.exp(-days / 60);
+            return arpdau * cumulative * decayFactor;
+        }
+
+        function calculateMonetizationCurve(day) {
+            if (day <= 7) {
+                return 0.8 + (day / 7) * 0.4;
+            } else if (day <= 30) {
+                return 1.2 - ((day - 7) / 23) * 0.3;
+            } else {
+                return 0.9 * Math.exp(-(day - 30) / 180);
+            }
+        }
+
+        function calculateAdvancedLTV(a, b, arpdau, days) {
+            let cumulative = 0;
+            const stepSize = 0.1;
+            for (let day = stepSize; day <= days; day += stepSize) {
+                const retentionAtDay = a * Math.pow(day, b);
+                const monetizationFactor = calculateMonetizationCurve(day);
+                cumulative += retentionAtDay * monetizationFactor * stepSize;
+            }
+            return arpdau * cumulative;
+        }
+
+        function getBenchmark(metric, value) {
+            const benchmarks = {
+                d1: { good: 30, average: 27, poor: 25 },
+                d7: { good: 12, average: 8, poor: 5 },
+                d30: { good: 5, average: 3, poor: 2 },
+                ltv_cpi: { good: 3, average: 2, poor: 1.5 },
+                roas_d7: { good: 50, average: 30, poor: 20 },
+                roas_d30: { good: 120, average: 80, poor: 50 }
+            };
+            const bench = benchmarks[metric];
+            if (!bench) return '';
+            if (value >= bench.good) return 'benchmark-good';
+            if (value >= bench.average) return 'benchmark-average';
+            return 'benchmark-poor';
+        }
+
+        function getBenchmarkLabel(metric, value) {
+            const cls = getBenchmark(metric, value);
+            if (cls === 'benchmark-good') return '<span class="benchmark-indicator benchmark-good">Above Target</span>';
+            if (cls === 'benchmark-average') return '<span class="benchmark-indicator benchmark-average">Average</span>';
+            if (cls === 'benchmark-poor') return '<span class="benchmark-indicator benchmark-poor">Below Target</span>';
+            return '';
+        }
+
+        function getRetentionHealth(d1, d7, d30) {
+            const platformAdjustedD1 = 30;
+            const score = (d1 / platformAdjustedD1) * 0.4 + (d7 / 12) * 0.35 + (d30 / 5) * 0.25;
+            
+            if (score > 1.0) return 'Excellent (Top 10%)';
+            if (score > 0.8) return 'Good (Above Average)';
+            if (score > 0.6) return 'Average';
+            if (score > 0.4) return 'Below Average';
+            return 'Poor (Needs Improvement)';
+        }
+
+        // Initialize app
+        document.addEventListener('DOMContentLoaded', function() {
+            // Method selection
+            document.querySelectorAll('.method-btn').forEach(btn => {
+                btn.addEventListener('click', () => selectMethod(btn.dataset.method, btn));
+            });
+
+            // Tabs (advanced)
+            document.querySelectorAll('.tab-btn').forEach(btn => {
+                btn.addEventListener('click', () => switchTab(btn.dataset.tab, btn));
+            });
+
+            // Cohorts
+            document.getElementById('add-cohort-btn')?.addEventListener('click', addCohort);
+            document.getElementById('cohort-table')?.addEventListener('click', (e) => {
+                if (e.target.classList.contains('remove-cohort')) {
+                    removeCohort(e.target);
+                }
+            });
+
+            // Calculate
+            document.getElementById('calculate-btn')?.addEventListener('click', calculateAndRender);
+        });
+
+        function selectMethod(method, buttonEl) {
+            currentMethod = method;
+            document.querySelectorAll('.method-btn').forEach(btn => btn.classList.remove('active'));
+            buttonEl?.classList.add('active');
+            document.querySelectorAll('.method-inputs').forEach(input => input.style.display = 'none');
+            document.getElementById(`${method}-inputs`).style.display = 'block';
+        }
+
+        function switchTab(tab, buttonEl) {
+            document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
+            buttonEl?.classList.add('active');
+            document.querySelectorAll('.tab-content').forEach(content => content.style.display = 'none');
+            document.getElementById(`${tab}-tab`).style.display = 'block';
+        }
+
+        function addCohort() {
+            const tbody = document.getElementById('cohort-tbody');
+            if (!tbody) return;
+            const row = document.createElement('tr');
+            row.innerHTML = `
+                <td><input type="text" value="Source ${++cohortCounter}" class="cohort-source"></td>
+                <td><input type="number" value="10000" class="cohort-users"></td>
+                <td><input type="number" value="2.00" step="0.01" class="cohort-cpi"></td>
+                <td><input type="number" value="30" step="0.1" class="cohort-d1"></td>
+                <td><input type="number" value="0.15" step="0.01" class="cohort-d1-arpu"></td>
+                <td><button class="remove-cohort">Remove</button></td>
+            `;
+            tbody.appendChild(row);
+        }
+
+        function removeCohort(btn) {
+            const tbody = document.getElementById('cohort-tbody');
+            if (tbody && tbody.children.length > 1) {
+                btn.closest('tr')?.remove();
+            }
+        }
+
+        function calculateAndRender() {
+            let results, decision, insights;
+
+            if (currentMethod === 'basic') {
+                const d1 = parseFloat(document.getElementById('d1-retention').value);
+                const d7 = parseFloat(document.getElementById('d7-retention').value);
+                const arpdau = parseFloat(document.getElementById('arpdau').value);
+                const cpi = parseFloat(document.getElementById('avg-cpi').value);
+                const genre = document.getElementById('genre').value;
+
+                const ltv = calculateLTV({ d1, d7 }, arpdau);
+                const ltvCpiRatio = ltv / cpi;
+                const d7Roas = (arpdau * 7 * (d7 / 100)) / cpi * 100;
+                const roi = ((ltv - cpi) / cpi) * 100;
+                const paybackDays = Math.round(cpi / (arpdau * (d7 / 100)));
+
+                results = { ltv: ltv.toFixed(2), ltvCpiRatio: ltvCpiRatio.toFixed(2), d7Roas: d7Roas.toFixed(1), roi: roi.toFixed(1), d1, d7, paybackDays };
+
+                insights = [];
+                if (d1 < 27 || d7 < 8) {
+                    decision = 'shutdown';
+                    insights.push('Retention metrics below 2025 industry minimum (D1: 27%, D7: 8%)');
+                    insights.push('Focus on core gameplay loop and first-time user experience');
+                } else if (ltvCpiRatio < 1.5) {
+                    decision = 'shutdown';
+                    insights.push('LTV:CPI ratio below viability threshold (1.5x minimum for 2025)');
+                } else if (ltvCpiRatio < 2) {
+                    decision = 'iterate';
+                    insights.push('LTV:CPI ratio needs improvement before scaling (target: 2x+)');
+                } else {
+                    decision = 'scale';
+                    insights.push('Strong unit economics support controlled scaling');
+                    insights.push(`Payback period: ${paybackDays} days (target: <30 days)`);
+                }
+            } else if (currentMethod === 'intermediate') {
+                const rows = [];
+                document.querySelectorAll('#cohort-tbody tr').forEach(tr => {
+                    rows.push({
+                        source: tr.querySelector('.cohort-source')?.value || 'Source',
+                        users: parseFloat(tr.querySelector('.cohort-users')?.value || '0'),
+                        cpi: parseFloat(tr.querySelector('.cohort-cpi')?.value || '0'),
+                        d1: parseFloat(tr.querySelector('.cohort-d1')?.value || '0'),
+                        d1Arpu: parseFloat(tr.querySelector('.cohort-d1-arpu')?.value || '0')
+                    });
+                });
+
+                const d30 = parseFloat(document.getElementById('d30-retention-inter').value);
+                const targetDay = parseFloat(document.getElementById('target-roas-day').value);
+
+                let totalSpend = 0, totalUsers = 0, weightedD1 = 0, weightedCPI = 0, totalRevenue = 0;
+
+                rows.forEach(row => {
+                    const spend = row.users * row.cpi;
+                    totalSpend += spend;
+                    totalUsers += row.users;
+                    weightedD1 += row.d1 * row.users;
+                    weightedCPI += row.cpi * row.users;
+                    totalRevenue += row.users * row.d1Arpu;
+                });
+
+                const avgD1 = weightedD1 / totalUsers;
+                const avgCPI = weightedCPI / totalUsers;
+                const d1Roas = (totalRevenue / totalSpend) * 100;
+                const retentionDecay = Math.log(d30 / avgD1) / Math.log(30);
+                const projectedLifetime = Math.min(30, avgD1 * Math.pow(targetDay, retentionDecay));
+                const estimatedLTV = (totalRevenue / totalUsers) * projectedLifetime * (targetDay / 30);
+                const projectedRoas = (estimatedLTV * totalUsers / totalSpend) * 100;
+
+                results = {
+                    totalSpend: totalSpend.toFixed(0),
+                    totalUsers: totalUsers.toFixed(0),
+                    avgCPI: avgCPI.toFixed(2),
+                    d1Roas: d1Roas.toFixed(1),
+                    projectedRoas: projectedRoas.toFixed(1),
+                    estimatedLTV: estimatedLTV.toFixed(2)
+                };
+
+                insights = [];
+                if (projectedRoas < 100) {
+                    decision = 'iterate';
+                    insights.push(`Projected ${targetDay}-day ROAS below breakeven`);
+                } else if (projectedRoas < 150) {
+                    decision = 'iterate';
+                    insights.push('Marginal profitability - optimize before scaling');
+                } else {
+                    decision = 'scale';
+                    insights.push(`Strong ${targetDay}-day ROAS projection: ${projectedRoas.toFixed(0)}%`);
+                }
+            } else {
+                // Advanced method
+                const d1 = parseFloat(document.getElementById('adv-d1').value);
+                const d3 = parseFloat(document.getElementById('adv-d3').value);
+                const d7 = parseFloat(document.getElementById('adv-d7').value);
+                const d30 = parseFloat(document.getElementById('adv-d30').value);
+                const iapArpdau = parseFloat(document.getElementById('iap-arpdau').value);
+                const adArpdau = parseFloat(document.getElementById('ad-arpdau').value);
+                const blendedArpdau = iapArpdau + adArpdau;
+                const totalSpend = parseFloat(document.getElementById('total-spend').value);
+                const totalInstalls = parseFloat(document.getElementById('total-installs').value);
+                const kFactor = parseFloat(document.getElementById('k-factor').value);
+
+                const retentionData = [
+                    { day: 1, rate: d1 / 100 },
+                    { day: 3, rate: d3 / 100 },
+                    { day: 7, rate: d7 / 100 },
+                    { day: 30, rate: d30 / 100 }
+                ];
+
+                const sumX = retentionData.reduce((sum, d) => sum + Math.log(d.day), 0);
+                const sumY = retentionData.reduce((sum, d) => sum + Math.log(d.rate), 0);
+                const sumXY = retentionData.reduce((sum, d) => sum + Math.log(d.day) * Math.log(d.rate), 0);
+                const sumX2 = retentionData.reduce((sum, d) => sum + Math.log(d.day) ** 2, 0);
+                const n = retentionData.length;
+
+                const b = (n * sumXY - sumX * sumY) / (n * sumX2 - sumX ** 2);
+                const logA = (sumY - b * sumX) / n;
+                const a = Math.exp(logA);
+
+                const cpi = totalSpend / totalInstalls;
+                const organicInstalls = totalInstalls * kFactor;
+                const eCPI = totalSpend / (totalInstalls + organicInstalls);
+
+                const ltv90 = calculateAdvancedLTV(a, b, blendedArpdau, 90);
+                const ltv180 = calculateAdvancedLTV(a, b, blendedArpdau, 180);
+                const ltv365 = calculateAdvancedLTV(a, b, blendedArpdau, 365);
+
+                const d7Revenue = blendedArpdau * 7 * (d7 / 100);
+                const d30Revenue = blendedArpdau * 30 * (d30 / 100);
+                const d7Roas = eCPI > 0 ? (d7Revenue / eCPI) * 100 : 0;
+                const d30Roas = eCPI > 0 ? (d30Revenue / eCPI) * 100 : 0;
+
+                results = {
+                    cpi: cpi.toFixed(2),
+                    eCPI: eCPI.toFixed(2),
+                    organicUplift: (kFactor * 100).toFixed(0),
+                    ltv90: ltv90.toFixed(2),
+                    ltv180: ltv180.toFixed(2),
+                    ltv365: ltv365.toFixed(2),
+                    ltvCpiRatio180: (ltv180 / eCPI).toFixed(2),
+                    d7Roas: d7Roas.toFixed(1),
+                    d30Roas: d30Roas.toFixed(1),
+                    paybackDays: Math.round(eCPI / blendedArpdau),
+                    blendedArpdau: blendedArpdau.toFixed(3),
+                    monetizationMix: {
+                        iap: ((iapArpdau / blendedArpdau) * 100).toFixed(0),
+                        ads: ((adArpdau / blendedArpdau) * 100).toFixed(0)
+                    },
+                    retentionHealth: getRetentionHealth(d1, d7, d30)
+                };
+
+                insights = [];
+                if (d1 < 27 || d7 < 8 || d30 < 2.5) {
+                    decision = 'shutdown';
+                    insights.push('Retention below 2025 viability thresholds (D1<27%, D7<8%, D30<2.5%)');
+                } else if (results.ltvCpiRatio180 < 2) {
+                    decision = 'iterate';
+                    insights.push('LTV:CPI ratio below 2025 threshold (2x minimum)');
+                } else if (results.ltvCpiRatio180 < 3.5) {
+                    decision = 'scale';
+                    insights.push('Metrics support scaling with predictive optimization');
+                } else {
+                    decision = 'scale';
+                    insights.push('Excellent unit economics - ready for aggressive scaling');
+                }
+            }
+
+            displayResults(results, decision, insights);
+            generateCharts(results);
+        }
+
+        function displayResults(results, decision, insights) {
+            const resultsContainer = document.getElementById('results-container');
+            const decisionCard = document.getElementById('decision-card');
+            const decisionContainer = document.getElementById('decision-container');
+            
+            let html = '<div class="results-section">';
+            
+            if (currentMethod === 'basic') {
+                html += `
+                    <div class="metric-card">
+                        <h3>Lifetime Value (LTV)</h3>
+                        <div class="metric-value">$${results.ltv}</div>
+                        <div class="metric-label">Estimated 180-day LTV</div>
+                    </div>
+                    <div class="metric-card">
+                        <h3>LTV:CPI Ratio</h3>
+                        <div class="metric-value">${results.ltvCpiRatio}x ${getBenchmarkLabel('ltv_cpi', results.ltvCpiRatio)}</div>
+                        <div class="metric-label">Target: 3x for healthy margins</div>
+                    </div>
+                    <div class="metric-card">
+                        <h3>Day 7 ROAS</h3>
+                        <div class="metric-value">${results.d7Roas}% ${getBenchmarkLabel('roas_d7', results.d7Roas)}</div>
+                        <div class="metric-label">Revenue returned by Day 7</div>
+                    </div>
+                    <div class="metric-card">
+                        <h3>ROI Projection</h3>
+                        <div class="metric-value">${results.roi}%</div>
+                        <div class="metric-label">Expected return on investment</div>
+                    </div>
+                `;
+            } else if (currentMethod === 'intermediate') {
+                html += `
+                    <div class="metric-card">
+                        <h3>Total Investment</h3>
+                        <div class="metric-value">$${parseInt(results.totalSpend).toLocaleString()}</div>
+                        <div class="metric-label">${results.totalUsers} users acquired</div>
+                    </div>
+                    <div class="metric-card">
+                        <h3>Blended CPI</h3>
+                        <div class="metric-value">$${results.avgCPI}</div>
+                        <div class="metric-label">Average across all sources</div>
+                    </div>
+                    <div class="metric-card">
+                        <h3>Day 1 ROAS</h3>
+                        <div class="metric-value">${results.d1Roas}%</div>
+                        <div class="metric-label">Immediate return signal</div>
+                    </div>
+                    <div class="metric-card">
+                        <h3>Projected ROAS</h3>
+                        <div class="metric-value">${results.projectedRoas}%</div>
+                        <div class="metric-label">Expected by target day</div>
+                    </div>
+                `;
+            } else {
+                html += `
+                    <div class="metric-card">
+                        <h3>Effective CPI</h3>
+                        <div class="metric-value">$${results.eCPI}</div>
+                        <div class="metric-label">Including ${results.organicUplift}% organic uplift</div>
+                    </div>
+                    <div class="metric-card">
+                        <h3>LTV Projections</h3>
+                        <div class="metric-value">$${results.ltv180}</div>
+                        <div class="metric-label">D90: $${results.ltv90} | D365: $${results.ltv365}</div>
+                    </div>
+                    <div class="metric-card">
+                        <h3>LTV:CPI Ratio (D180)</h3>
+                        <div class="metric-value">${results.ltvCpiRatio180}x</div>
+                        <div class="metric-label">Profitability multiplier</div>
+                    </div>
+                    <div class="metric-card">
+                        <h3>ROAS Progression</h3>
+                        <div class="metric-value">${results.d30Roas}%</div>
+                        <div class="metric-label">D7: ${results.d7Roas}% | D30: ${results.d30Roas}%</div>
+                    </div>
+                    <div class="metric-card">
+                        <h3>Monetization Mix</h3>
+                        <div class="metric-value">${results.monetizationMix.iap}% / ${results.monetizationMix.ads}%</div>
+                        <div class="metric-label">IAP / Ads revenue split</div>
+                    </div>
+                    <div class="metric-card">
+                        <h3>Retention Health</h3>
+                        <div class="metric-value">${results.retentionHealth}</div>
+                        <div class="metric-label">Overall engagement score</div>
+                    </div>
+                `;
+            }
+            
+            html += '</div>';
+            resultsContainer.innerHTML = html;
+            
+            // Display decision
+            let decisionHTML = '';
+            if (decision === 'scale') {
+                decisionHTML = `<div class="decision-box decision-scale"><div class="decision-title">✅ SCALE</div><div class="decision-subtitle">Game is ready for growth investment</div></div>`;
+            } else if (decision === 'iterate') {
+                decisionHTML = `<div class="decision-box decision-iterate"><div class="decision-title">🔄 ITERATE</div><div class="decision-subtitle">Improve metrics before scaling</div></div>`;
+            } else {
+                decisionHTML = `<div class="decision-box decision-shutdown"><div class="decision-title">⛔ PIVOT/SHUTDOWN</div><div class="decision-subtitle">Fundamental issues need addressing</div></div>`;
+            }
+            
+            decisionHTML += '<ul class="insights-list">' + insights.map(i => `<li>${i}</li>`).join('') + '</ul>';
+            
+            decisionContainer.innerHTML = decisionHTML;
+            decisionCard.style.display = 'block';
+        }
+
+        function generateCharts(results) {
+            const chartsCard = document.getElementById('charts-card');
+            const chartsContainer = document.getElementById('charts-container');
+            
+            chartsContainer.innerHTML = '';
+            let html = '<div class="chart-grid">';
+            
+            if (currentMethod === 'basic') {
+                html += `
+                    <div class="chart-container">
+                        <div class="chart-title">LTV Projection Curve</div>
+                        <div class="chart-subtitle">Power law retention model over 180 days</div>
+                        <div style="flex: 1; position: relative; width: 100%;">
+                            <canvas id="ltv-projection-chart"></canvas>
+                        </div>
+                    </div>
+                    <div class="chart-container">
+                        <div class="chart-title">ROAS Timeline</div>
+                        <div class="chart-subtitle">Return on ad spend progression</div>
+                        <div style="flex: 1; position: relative; width: 100%;">
+                            <canvas id="roas-timeline-chart"></canvas>
+                        </div>
+                    </div>`;
+            }
+            
+            html += '</div>';
+            chartsContainer.innerHTML = html;
+            chartsCard.style.display = 'block';
+            
+            // Create basic charts
+            if (currentMethod === 'basic') {
+                setTimeout(() => {
+                    const d1 = parseFloat(document.getElementById('d1-retention').value);
+                    const d7 = parseFloat(document.getElementById('d7-retention').value);
+                    const arpdau = parseFloat(document.getElementById('arpdau').value);
+                    const cpi = parseFloat(document.getElementById('avg-cpi').value);
+                    
+                    // LTV Chart
+                    const ltvCtx = document.getElementById('ltv-projection-chart')?.getContext('2d');
+                    if (ltvCtx) {
+                        const days = Array.from({length: 180}, (_, i) => i + 1);
+                        const ltvData = days.map(day => calculateLTV({d1, d7}, arpdau, day));
+                        
+                        new Chart(ltvCtx, {
+                            type: 'line',
+                            data: {
+                                labels: days,
+                                datasets: [{
+                                    label: 'Cumulative LTV ($)',
+                                    data: ltvData,
+                                    borderColor: '#667eea',
+                                    backgroundColor: 'rgba(102, 126, 234, 0.1)',
+                                    fill: true,
+                                    tension: 0.4
+                                }]
+                            },
+                            options: {
+                                responsive: true,
+                                maintainAspectRatio: false,
+                                scales: {
+                                    x: { title: { display: true, text: 'Days Since Install' } },
+                                    y: { title: { display: true, text: 'Cumulative LTV ($)' }, beginAtZero: true }
+                                }
+                            }
+                        });
+                    }
+                    
+                    // ROAS Chart
+                    const roasCtx = document.getElementById('roas-timeline-chart')?.getContext('2d');
+                    if (roasCtx) {
+                        const roasDays = [7, 14, 30, 60, 90, 120, 180];
+                        const roasData = roasDays.map(day => {
+                            const ltv = calculateLTV({d1, d7}, arpdau, day);
+                            return (ltv / cpi) * 100;
+                        });
+                        
+                        new Chart(roasCtx, {
+                            type: 'bar',
+                            data: {
+                                labels: roasDays.map(d => `D${d}`),
+                                datasets: [{
+                                    label: 'ROAS %',
+                                    data: roasData,
+                                    backgroundColor: roasData.map(val => 
+                                        val >= 150 ? '#4CAF50' : val >= 100 ? '#FF9800' : '#F44336'
+                                    )
+                                }]
+                            },
+                            options: {
+                                responsive: true,
+                                maintainAspectRatio: false,
+                                plugins: { legend: { display: false } },
+                                scales: {
+                                    y: { title: { display: true, text: 'ROAS %' }, beginAtZero: true }
+                                }
+                            }
+                        });
+                    }
+                }, 100);
+            }
+        }
+    </script>
 </body>
 </html>
