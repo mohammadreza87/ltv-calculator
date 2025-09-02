@@ -35,54 +35,47 @@ export function generateCharts(currentMethod, results) {
   } else if (currentMethod === 'intermediate') {
     html += `
       <div class="chart-container">
-        <div class="chart-title">Retention Curve Analysis</div>
-        <div class="chart-subtitle">D1, D7, D30 retention progression with benchmarks</div>
+        <div class="chart-title">Cohort Performance Comparison</div>
+        <div class="chart-subtitle">CPI vs D1 ROAS by traffic source</div>
         <div style="flex: 1; position: relative; width: 100%;">
-          <canvas id="retention-curve-chart"></canvas>
+          <canvas id="cohort-performance-chart"></canvas>
         </div>
       </div>
       <div class="chart-container">
-        <div class="chart-title">Revenue Breakdown</div>
-        <div class="chart-subtitle">IAP vs Ad revenue contribution</div>
+        <div class="chart-title">Source Efficiency Matrix</div>
+        <div class="chart-subtitle">Users acquired vs revenue generated</div>
         <div style="flex: 1; position: relative; width: 100%;">
-          <canvas id="revenue-breakdown-chart"></canvas>
-        </div>
-      </div>
-      <div class="chart-container">
-        <div class="chart-title">LTV vs CPI Analysis</div>
-        <div class="chart-subtitle">Cost efficiency over time periods</div>
-        <div style="flex: 1; position: relative; width: 100%;">
-          <canvas id="ltv-cpi-chart"></canvas>
+          <canvas id="source-efficiency-chart"></canvas>
         </div>
       </div>`;
   } else {
     html += `
       <div class="chart-container">
-        <div class="chart-title">Cohort Performance Matrix</div>
-        <div class="chart-subtitle">User segments and spending patterns</div>
+        <div class="chart-title">Retention Curve Analysis</div>
+        <div class="chart-subtitle">Power law fit vs actual retention data</div>
         <div style="flex: 1; position: relative; width: 100%;">
-          <canvas id="cohort-matrix-chart"></canvas>
+          <canvas id="retention-curve-chart"></canvas>
         </div>
       </div>
       <div class="chart-container">
-        <div class="chart-title">Channel Performance Comparison</div>
-        <div class="chart-subtitle">Acquisition source efficiency analysis</div>
+        <div class="chart-title">LTV Projections Comparison</div>
+        <div class="chart-subtitle">90, 180, 365-day LTV estimates</div>
         <div style="flex: 1; position: relative; width: 100%;">
-          <canvas id="channel-performance-chart"></canvas>
+          <canvas id="ltv-comparison-chart"></canvas>
         </div>
       </div>
       <div class="chart-container">
-        <div class="chart-title">Scaling Decision Matrix</div>
-        <div class="chart-subtitle">Risk vs Reward visualization</div>
+        <div class="chart-title">Monetization Mix Analysis</div>
+        <div class="chart-subtitle">IAP vs Ad revenue breakdown</div>
         <div style="flex: 1; position: relative; width: 100%;">
-          <canvas id="decision-matrix-chart"></canvas>
+          <canvas id="monetization-pie-chart"></canvas>
         </div>
       </div>
       <div class="chart-container">
-        <div class="chart-title">Monetization Health Score</div>
-        <div class="chart-subtitle">Overall game performance radar</div>
+        <div class="chart-title">ROAS Progression</div>
+        <div class="chart-subtitle">D7 vs D30 ROAS with benchmarks</div>
         <div style="flex: 1; position: relative; width: 100%;">
-          <canvas id="health-radar-chart"></canvas>
+          <canvas id="roas-progression-chart"></canvas>
         </div>
       </div>`;
   }
@@ -91,10 +84,18 @@ export function generateCharts(currentMethod, results) {
   chartsContainer.innerHTML = html;
   chartsCard.style.display = 'block';
 
-  // Now instantiate the charts
-  if (currentMethod === 'basic') createBasicCharts();
-  else if (currentMethod === 'intermediate') createIntermediateCharts(results);
-  else createAdvancedCharts(results);
+  // Defer chart creation to ensure DOM paints and canvas has layout
+  const build = () => {
+    try {
+      if (currentMethod === 'basic') createBasicCharts();
+      else if (currentMethod === 'intermediate') createIntermediateCharts(results);
+      else createAdvancedCharts(results);
+    } catch (e) {
+      console.error('Chart build error', e);
+    }
+  };
+  if (typeof requestAnimationFrame === 'function') requestAnimationFrame(build);
+  else setTimeout(build, 0);
 }
 
 function createBasicCharts() {
@@ -152,249 +153,85 @@ function createBasicCharts() {
 }
 
 function createIntermediateCharts(results) {
-  const d1 = parseFloat(document.getElementById('int-d1-retention').value);
-  const d7 = parseFloat(document.getElementById('int-d7-retention').value);
-  const d30 = parseFloat(document.getElementById('int-d30-retention').value);
-  const arpdau = parseFloat(document.getElementById('int-arpdau').value);
-  const iapRevenue = parseFloat(document.getElementById('iap-revenue').value);
-  const adRevenue = parseFloat(document.getElementById('ad-revenue').value);
-  const cpi = parseFloat(document.getElementById('int-avg-cpi').value);
-  
-  // Retention Curve Chart
-  const retentionCtx = document.getElementById('retention-curve-chart')?.getContext('2d');
-  if (retentionCtx) {
+  // Cohort Performance Chart (bubble)
+  const cohortCtx = document.getElementById('cohort-performance-chart')?.getContext('2d');
+  if (cohortCtx && results.cohorts && results.cohorts.length) {
+    const cohortData = results.cohorts.map(cohort => ({
+      x: parseFloat(cohort.cpi) || 0,
+      y: cohort.spend > 0 ? (cohort.revenue / cohort.spend) * 100 : 0,
+      r: Math.sqrt(Math.max(parseFloat(cohort.users) || 0, 0)) / 50,
+      label: cohort.source
+    }));
     try {
-      new Chart(retentionCtx, {
-        type: 'line',
-        data: {
-          labels: ['D1', 'D7', 'D30'],
-          datasets: [{
-            label: 'Your Game',
-            data: [d1, d7, d30],
-            borderColor: '#667eea',
-            backgroundColor: 'rgba(102, 126, 234, 0.2)',
-            fill: false,
-            tension: 0.1
-          }, {
-            label: 'Industry Benchmark',
-            data: [40, 18, 8],
-            borderColor: '#ff6b6b',
-            backgroundColor: 'rgba(255, 107, 107, 0.2)',
-            fill: false,
-            tension: 0.1,
-            borderDash: [5, 5]
-          }]
-        },
+      new Chart(cohortCtx, {
+        type: 'bubble',
+        data: { datasets: [{ label: 'Traffic Sources', data: cohortData, backgroundColor: 'rgba(102, 126, 234, 0.6)', borderColor: '#667eea' }] },
         options: {
           responsive: true,
           maintainAspectRatio: false,
+          plugins: { legend: { labels: { font: { weight: '600' }, color: '#333' } }, tooltip: { callbacks: { label: function(ctx) { const p = ctx.parsed; const c = results.cohorts[ctx.dataIndex]; return `${c.source}: CPI $${p.x}, ROAS ${p.y.toFixed(1)}%, Users ${c.users}`; } } } },
           scales: {
-            y: { title: { display: true, text: 'Retention %' }, beginAtZero: true, max: 100 }
+            x: { title: { display: true, text: 'CPI ($)', font: { weight: '600' }, color: '#555' }, ticks: { color: '#666' }, grid: { color: 'rgba(0,0,0,0.1)' } },
+            y: { title: { display: true, text: 'D1 ROAS (%)', font: { weight: '600' }, color: '#555' }, beginAtZero: true, ticks: { color: '#666' }, grid: { color: 'rgba(0,0,0,0.1)' } }
           }
         }
       });
-    } catch (e) { console.error('Intermediate retention chart error', e); }
+    } catch (e) { console.error('Intermediate cohort chart error', e); }
   }
-  
-  // Revenue Breakdown Chart
-  const revenueCtx = document.getElementById('revenue-breakdown-chart')?.getContext('2d');
-  if (revenueCtx) {
+
+  // Source Efficiency Chart (doughnut)
+  const efficiencyCtx = document.getElementById('source-efficiency-chart')?.getContext('2d');
+  if (efficiencyCtx && results.cohorts && results.cohorts.length) {
     try {
-      new Chart(revenueCtx, {
+      new Chart(efficiencyCtx, {
         type: 'doughnut',
-        data: {
-          labels: ['IAP Revenue', 'Ad Revenue'],
-          datasets: [{
-            data: [iapRevenue, adRevenue],
-            backgroundColor: ['#4CAF50', '#2196F3']
-          }]
-        },
-        options: {
-          responsive: true,
-          maintainAspectRatio: false,
-          plugins: {
-            legend: { position: 'bottom' }
-          }
-        }
+        data: { labels: results.cohorts.map(c => c.source), datasets: [{ label: 'Revenue Share', data: results.cohorts.map(c => c.revenue), backgroundColor: ['#667eea', '#764ba2', '#f093fb', '#f5576c', '#4facfe', '#00f2fe', '#43e97b', '#38f9d7'] }] },
+        options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'bottom', labels: { font: { weight: '600' }, color: '#333', padding: 15 } }, tooltip: { backgroundColor: 'rgba(0,0,0,0.8)', titleFont: { weight: '600' }, bodyFont: { weight: '500' }, callbacks: { label: function(ctx) { const cohort = results.cohorts[ctx.dataIndex]; const total = results.cohorts.reduce((s, c) => s + c.revenue, 0); const pct = total ? ((cohort.revenue / total) * 100).toFixed(1) : '0.0'; return `${cohort.source}: $${cohort.revenue.toFixed(0)} (${pct}%)`; } } } } }
       });
-    } catch (e) { console.error('Intermediate revenue chart error', e); }
-  }
-  
-  // LTV vs CPI Chart
-  const ltvCpiCtx = document.getElementById('ltv-cpi-chart')?.getContext('2d');
-  if (ltvCpiCtx) {
-    const timeFrames = ['D7', 'D30', 'D60', 'D180'];
-    const ltvValues = timeFrames.map((_, i) => {
-      const days = [7, 30, 60, 180][i];
-      return calculateLTV({d1, d7, d30}, arpdau + (iapRevenue + adRevenue), days);
-    });
-    
-    try {
-      new Chart(ltvCpiCtx, {
-        type: 'bar',
-        data: {
-          labels: timeFrames,
-          datasets: [{
-            label: 'LTV ($)',
-            data: ltvValues,
-            backgroundColor: '#667eea',
-            yAxisID: 'y'
-          }, {
-            label: 'CPI ($)',
-            data: Array(4).fill(cpi),
-            backgroundColor: '#ff6b6b',
-            yAxisID: 'y'
-          }]
-        },
-        options: {
-          responsive: true,
-          maintainAspectRatio: false,
-          scales: {
-            y: { title: { display: true, text: 'Value ($)' }, beginAtZero: true }
-          }
-        }
-      });
-    } catch (e) { console.error('Intermediate LTV-CPI chart error', e); }
+    } catch (e) { console.error('Intermediate efficiency chart error', e); }
   }
 }
 
 function createAdvancedCharts(results) {
-  // Get advanced form values
-  const channels = ['organic', 'facebook', 'google', 'unity', 'applovin'];
-  const cohortData = channels.map(channel => ({
-    channel,
-    d1: parseFloat(document.getElementById(`${channel}-d1`).value) || 0,
-    d7: parseFloat(document.getElementById(`${channel}-d7`).value) || 0,
-    d30: parseFloat(document.getElementById(`${channel}-d30`).value) || 0,
-    cpi: parseFloat(document.getElementById(`${channel}-cpi`).value) || 0,
-    volume: parseFloat(document.getElementById(`${channel}-volume`).value) || 0
-  }));
-  
-  // Cohort Performance Matrix
-  const cohortCtx = document.getElementById('cohort-matrix-chart')?.getContext('2d');
-  if (cohortCtx) {
+  // Retention Curve Analysis
+  const retentionCtx = document.getElementById('retention-curve-chart')?.getContext('2d');
+  if (retentionCtx) {
+    const d1 = parseFloat(document.getElementById('adv-d1').value);
+    const d3 = parseFloat(document.getElementById('adv-d3').value);
+    const d7 = parseFloat(document.getElementById('adv-d7').value);
+    const d30 = parseFloat(document.getElementById('adv-d30').value);
+    const actualDays = [1, 3, 7, 30];
+    const actualRetention = [d1, d3, d7, d30];
+    const curveDays = Array.from({ length: 30 }, (_, i) => i + 1);
+    const b = Math.log((d7/100) / (d1/100)) / Math.log(7);
+    const a = d1 / 100;
+    const curveRetention = curveDays.map(day => a * Math.pow(day, b) * 100);
     try {
-      new Chart(cohortCtx, {
-        type: 'scatter',
-        data: {
-          datasets: cohortData.map((data, i) => ({
-            label: data.channel.charAt(0).toUpperCase() + data.channel.slice(1),
-            data: [{x: data.d1, y: data.d30, r: Math.sqrt(data.volume) / 10}],
-            backgroundColor: ['#4CAF50', '#2196F3', '#FF9800', '#E91E63', '#9C27B0'][i]
-          }))
-        },
-        options: {
-          responsive: true,
-          maintainAspectRatio: false,
-          scales: {
-            x: { title: { display: true, text: 'D1 Retention %' } },
-            y: { title: { display: true, text: 'D30 Retention %' } }
-          }
-        }
-      });
-    } catch (e) { console.error('Advanced cohort chart error', e); }
+      new Chart(retentionCtx, { type: 'line', data: { datasets: [ { label: 'Actual Data', data: actualDays.map((day, i) => ({ x: day, y: actualRetention[i] })), backgroundColor: '#667eea', borderColor: '#667eea', type: 'scatter', pointRadius: 8 }, { label: 'Power Law Fit', data: curveDays.map((day, i) => ({ x: day, y: curveRetention[i] })), borderColor: '#764ba2', backgroundColor: 'rgba(118, 75, 162, 0.1)', fill: false, tension: 0.4 } ] }, options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { labels: { font: { weight: '600' }, color: '#333' } } }, scales: { x: { type: 'linear', title: { display: true, text: 'Days Since Install', font: { weight: '600' }, color: '#555' }, ticks: { color: '#666' }, grid: { color: 'rgba(0,0,0,0.1)' } }, y: { title: { display: true, text: 'Retention %', font: { weight: '600' }, color: '#555' }, beginAtZero: true, ticks: { color: '#666' }, grid: { color: 'rgba(0,0,0,0.1)' } } } } });
+    } catch (e) { console.error('Advanced retention chart error', e); }
   }
-  
-  // Channel Performance Chart
-  const channelCtx = document.getElementById('channel-performance-chart')?.getContext('2d');
-  if (channelCtx) {
-    const channelNames = cohortData.map(d => d.channel.charAt(0).toUpperCase() + d.channel.slice(1));
-    const channelRoas = cohortData.map(d => {
-      const ltv = calculateLTV({d1: d.d1, d7: d.d7, d30: d.d30}, 0.5, 180);
-      return d.cpi > 0 ? (ltv / d.cpi) * 100 : 0;
-    });
-    
+
+  // LTV Comparison Chart (bar)
+  const ltvCompCtx = document.getElementById('ltv-comparison-chart')?.getContext('2d');
+  if (ltvCompCtx) {
     try {
-      new Chart(channelCtx, {
-        type: 'bar',
-        data: {
-          labels: channelNames,
-          datasets: [{
-            label: 'ROAS %',
-            data: channelRoas,
-            backgroundColor: channelRoas.map(val => 
-              val >= 150 ? '#4CAF50' : val >= 100 ? '#FF9800' : '#F44336'
-            )
-          }]
-        },
-        options: {
-          responsive: true,
-          maintainAspectRatio: false,
-          indexAxis: 'y',
-          scales: {
-            x: { title: { display: true, text: 'ROAS %' }, beginAtZero: true }
-          }
-        }
-      });
-    } catch (e) { console.error('Advanced channel chart error', e); }
+      new Chart(ltvCompCtx, { type: 'bar', data: { labels: ['D90', 'D180', 'D365'], datasets: [{ label: 'LTV ($)', data: [parseFloat(results.ltv90) || 0, parseFloat(results.ltv180) || 0, parseFloat(results.ltv365) || 0], backgroundColor: ['#667eea', '#764ba2', '#f093fb'] }] }, options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { x: { ticks: { color: '#666' }, grid: { color: 'rgba(0,0,0,0.1)' } }, y: { title: { display: true, text: 'LTV ($)', font: { weight: '600' }, color: '#555' }, beginAtZero: true, ticks: { color: '#666' }, grid: { color: 'rgba(0,0,0,0.1)' } } } } });
+    } catch (e) { console.error('Advanced LTV chart error', e); }
   }
-  
-  // Decision Matrix Chart
-  const decisionCtx = document.getElementById('decision-matrix-chart')?.getContext('2d');
-  if (decisionCtx) {
+
+  // Monetization Pie Chart
+  const monetizationCtx = document.getElementById('monetization-pie-chart')?.getContext('2d');
+  if (monetizationCtx) {
     try {
-      new Chart(decisionCtx, {
-        type: 'scatter',
-        data: {
-          datasets: [{
-            label: 'Scale Zone',
-            data: [{x: 150, y: 85}],
-            backgroundColor: '#4CAF50',
-            pointRadius: 20
-          }, {
-            label: 'Iterate Zone', 
-            data: [{x: 100, y: 60}],
-            backgroundColor: '#FF9800',
-            pointRadius: 15
-          }, {
-            label: 'Risk Zone',
-            data: [{x: 50, y: 30}],
-            backgroundColor: '#F44336',
-            pointRadius: 10
-          }]
-        },
-        options: {
-          responsive: true,
-          maintainAspectRatio: false,
-          scales: {
-            x: { title: { display: true, text: 'ROAS %' }, min: 0, max: 200 },
-            y: { title: { display: true, text: 'Quality Score' }, min: 0, max: 100 }
-          }
-        }
-      });
-    } catch (e) { console.error('Advanced decision chart error', e); }
+      new Chart(monetizationCtx, { type: 'pie', data: { labels: ['In-App Purchases', 'Ad Revenue'], datasets: [{ data: [parseFloat(results.monetizationMix.iap) || 0, parseFloat(results.monetizationMix.ads) || 0], backgroundColor: ['#667eea', '#764ba2'] }] }, options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'bottom', labels: { font: { weight: '600' }, color: '#333', padding: 15 } }, tooltip: { backgroundColor: 'rgba(0,0,0,0.8)', titleFont: { weight: '600' }, bodyFont: { weight: '500' }, callbacks: { label: (ctx) => `${ctx.label}: ${ctx.parsed}%` } } } } });
+    } catch (e) { console.error('Advanced monetization chart error', e); }
   }
-  
-  // Health Radar Chart
-  const healthCtx = document.getElementById('health-radar-chart')?.getContext('2d');
-  if (healthCtx) {
+
+  // ROAS Progression Chart
+  const roasProgCtx = document.getElementById('roas-progression-chart')?.getContext('2d');
+  if (roasProgCtx) {
     try {
-      new Chart(healthCtx, {
-        type: 'radar',
-        data: {
-          labels: ['Retention', 'Monetization', 'User Acquisition', 'Engagement', 'Virality'],
-          datasets: [{
-            label: 'Current Performance',
-            data: [75, 60, 80, 65, 40],
-            borderColor: '#667eea',
-            backgroundColor: 'rgba(102, 126, 234, 0.2)',
-            fill: true
-          }, {
-            label: 'Industry Benchmark',
-            data: [60, 50, 70, 55, 35],
-            borderColor: '#ff6b6b',
-            backgroundColor: 'rgba(255, 107, 107, 0.1)',
-            fill: true
-          }]
-        },
-        options: {
-          responsive: true,
-          maintainAspectRatio: false,
-          scales: {
-            r: { beginAtZero: true, max: 100 }
-          }
-        }
-      });
-    } catch (e) { console.error('Advanced health chart error', e); }
+      new Chart(roasProgCtx, { type: 'line', data: { labels: ['D7', 'D30'], datasets: [ { label: 'Actual ROAS', data: [parseFloat(results.d7Roas) || 0, parseFloat(results.d30Roas) || 0], borderColor: '#667eea', backgroundColor: 'rgba(102, 126, 234, 0.1)', fill: true, tension: 0.4 }, { label: 'Benchmark (Good)', data: [50, 120], borderColor: '#4CAF50', borderDash: [5,5], fill: false }, { label: 'Benchmark (Break-even)', data: [20, 50], borderColor: '#FF9800', borderDash: [5,5], fill: false } ] }, options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { labels: { font: { weight: '600' }, color: '#333' } } }, scales: { x: { ticks: { color: '#666' }, grid: { color: 'rgba(0,0,0,0.1)' } }, y: { title: { display: true, text: 'ROAS %', font: { weight: '600' }, color: '#555' }, beginAtZero: true, ticks: { color: '#666' }, grid: { color: 'rgba(0,0,0,0.1)' } } } } });
+    } catch (e) { console.error('Advanced ROAS chart error', e); }
   }
 }
