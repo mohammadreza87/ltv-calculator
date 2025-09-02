@@ -33,14 +33,25 @@ Visit: [https://[your-username].github.io/ltv-calculator](https://[your-username
 ## Local Development
 
 1. Clone the repository
-2. Open `index.html` in your browser
-3. No build process required - pure HTML/CSS/JavaScript
+2. Open `index.html` in your browser. If your browser blocks ES module file imports from `file://`, serve locally:
+   - Python: `python3 -m http.server 8080` then visit `http://localhost:8080`
+3. No build process required - pure HTML/CSS/JavaScript (ES Modules)
+
+## Project Structure
+
+- `index.html` — Markup only, references external CSS/JS
+- `assets/css/styles.css` — Styles and responsive layout
+- `src/`
+  - `main.js` — App bootstrap (DOMContentLoaded)
+  - `ui.js` — Event handlers, DOM updates, result rendering
+  - `calculations.js` — LTV/ROAS/retention utilities and per-method compute functions
+  - `charts.js` — Chart rendering for Basic/Intermediate/Advanced
 
 ## Technologies Used
 
 - Pure HTML5
 - CSS3 with modern gradients and animations
-- Vanilla JavaScript (no dependencies)
+- Vanilla JavaScript (ES Modules) + Chart.js via CDN
 - Responsive design for mobile/tablet/desktop
 
 ## Author
