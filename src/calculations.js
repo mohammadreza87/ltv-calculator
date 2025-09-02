@@ -109,14 +109,7 @@ export function calculateAdvancedLTV(a, b, arpdau, days) {
   return arpdau * cumulative;
 }
 
-export function calculateMonetizationCurve(day) {
-  if (day <= 7) {
-    return 0.8 + (day / 7) * 0.4; // 0.8 -> 1.2
-  } else if (day <= 30) {
-    return 1.2 - ((day - 7) / 23) * 0.3; // 1.2 -> 0.9
-  }
-  return 0.9 * Math.exp(-(day - 30) / 180);
-}
+// calculateMonetizationCurve already declared above
 
 
 // Per-method computations
@@ -301,4 +294,3 @@ export function computeAdvancedMetrics({ d1, d3, d7, d30, iapArpdau, adArpdau, p
 
   return { results, decision, insights };
 }
-
