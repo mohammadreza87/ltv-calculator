@@ -46,14 +46,14 @@
     <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
     <link rel="dns-prefetch" href="https://cdn.jsdelivr.net">
     
-    <!-- Favicon -->
-    <link rel="icon" type="image/x-icon" href="/favicon.ico">
-    <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png">
-    <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png">
-    <link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png">
+    <!-- Favicon (use relative paths for local dev) -->
+    <link rel="icon" type="image/x-icon" href="favicon.ico">
+    <link rel="apple-touch-icon" sizes="180x180" href="apple-touch-icon.png">
+    <link rel="icon" type="image/png" sizes="32x32" href="favicon-32x32.png">
+    <link rel="icon" type="image/png" sizes="16x16" href="favicon-16x16.png">
     
-    <!-- PWA Manifest -->
-    <link rel="manifest" href="/manifest.json">
+    <!-- PWA Manifest (requires HTTP/HTTPS to load) -->
+    <link rel="manifest" href="manifest.json">
     
     <!-- Schema.org Structured Data for AI & Search Engines -->
     <script type="application/ld+json">
@@ -416,7 +416,10 @@
         </div>
     </div>
 
+    <!-- Inline script removed in favor of ES modules -->
     <script>
+        // Disabled inline bundle; using ES modules in src/*
+        if (false) {
         // Bundled JavaScript for GitHub Pages compatibility
         let currentMethod = 'basic';
         let cohortCounter = 1;
@@ -1216,6 +1219,8 @@
                 }
             }, 100);
         }
+        }
     </script>
-</body>
+    <script type="module" src="src/main.js"></script>
+  </body>
 </html>
